@@ -1,0 +1,40 @@
+{
+  "name": "macclip",
+  "version": "0.1.2",
+  "description": "Tiny macOS clipboard history app with a global hotkey picker.",
+  "type": "module",
+  "bin": {
+    "macclip": "bin/macclip.js"
+  },
+  "files": [
+    "bin/macclip.js",
+    "macclip.swift",
+    "README.md",
+    "LICENSE"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "lint": "node --check bin/macclip.js",
+    "pack:dry-run": "npm pack --dry-run",
+    "verify": "npm run lint && npm run pack:dry-run",
+    "prepublishOnly": "npm run verify",
+    "test": "npm run lint"
+  },
+  "keywords": [
+    "clipboard",
+    "macos",
+    "menu-bar",
+    "hotkey",
+    "productivity"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "author": "Yashwant Midha",
+  "license": "MIT"
+}
