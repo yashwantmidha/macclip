@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:macclip}",
+            "name": "Debug macclip",
+            "target": "macclip",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug macclip"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:macclip}",
+            "name": "Release macclip",
+            "target": "macclip",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release macclip"
+        }
+    ]
+}
