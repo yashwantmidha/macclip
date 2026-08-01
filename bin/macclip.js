@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,8 +21,8 @@ const installDir = path.join(HOME, "Library", "ApplicationSupport", APP_NAME);
 const binPath = path.join(installDir, APP_NAME);
 const sessionPlistPath = path.join(installDir, `${LABEL}.plist`);
 const launchAgentPlistPath = path.join(HOME, "Library", "LaunchAgents", `${LABEL}.plist`);
-const sourcePath = path.join(projectRoot, "macclip.swift");
-const moduleCachePath = path.join(os.tmpdir(), "macclip-swift-module-cache");
+const packagePath = path.join(projectRoot, "Package.swift");
+const builtBinaryPath = path.join(projectRoot, ".build", "release", "macclip");
 
 function fail(message) {
   console.error(`Error: ${message}`);
@@ -55,8 +55,8 @@ function ensureUID() {
 }
 
 function ensureSource() {
-  if (!existsSync(sourcePath)) {
-    fail(`Cannot find source file: ${sourcePath}`);
+  if (!existsSync(packagePath)) {
+    fail(`Cannot find Swift package manifest: ${packagePath}`);
   }
 }
 
@@ -73,15 +73,6 @@ function sessionPlistForLabel(label) {
   return path.join(installDir, `${label}.plist`);
 }
 
-function getSDKPath() {
-  const result = run("xcrun", ["--sdk", "macosx", "--show-sdk-path"], false);
-  if (result.status !== 0) {
-    return null;
-  }
-  const sdk = result.stdout.trim();
-  return sdk.length > 0 ? sdk : null;
-}
-
 function ensureDirectories() {
   mkdirSync(path.dirname(launchAgentPlistPath), { recursive: true });
   mkdirSync(installDir, { recursive: true });
@@ -91,18 +82,8 @@ function compileBinary() {
   ensureSource();
   ensureDirectories();
 
-  rmSync(moduleCachePath, { recursive: true, force: true });
-  mkdirSync(moduleCachePath, { recursive: true });
-
-  const args = [];
-  const sdk = getSDKPath();
-  if (sdk) {
-    args.push("-sdk", sdk);
-  }
-  args.push("-module-cache-path", moduleCachePath, sourcePath, "-o", binPath);
-  run("swiftc", args, true);
-
-  rmSync(moduleCachePath, { recursive: true, force: true });
+  run("swift", ["build", "-c", "release", "--package-path", projectRoot], true);
+  copyFileSync(builtBinaryPath, binPath);
 }
 
 function plistXML() {
@@ -166,7 +147,7 @@ function install({ autostart }) {
     console.log(`${APP_NAME} installed and running (autostart disabled).`);
   }
 
-  console.log("Use Option+V to open clipboard history.");
+  console.log("Option+V: clipboard history · Option+Shift+R: capture region");
 }
 
 function uninstall() {
