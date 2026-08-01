@@ -1,4 +1,5 @@
-MacClip
+/MacClip
+.build/
 .swift-module-cache/
 __pycache__/
 .DS_Store

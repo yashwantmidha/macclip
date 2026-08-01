@@ -2,33 +2,22 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SRC="$ROOT_DIR/macclip.swift"
 INSTALL_DIR="$HOME/Library/ApplicationSupport/MacClip"
 BIN="$INSTALL_DIR/MacClip"
 PLIST="$HOME/Library/LaunchAgents/com.macclip.agent.plist"
 LABEL="com.macclip.agent"
 UID_VALUE="$(id -u)"
-MODULE_CACHE="$(mktemp -d /tmp/macclip-swift-cache.XXXXXX)"
-SDK_PATH="$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
 
-cleanup() {
-  rm -rf "$MODULE_CACHE"
-}
-trap cleanup EXIT
-
-if [[ ! -f "$SRC" ]]; then
-  echo "Source file not found: $SRC"
+if [[ ! -f "$ROOT_DIR/Package.swift" ]]; then
+  echo "Package.swift not found in: $ROOT_DIR"
   exit 1
 fi
 
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$HOME/Library/LaunchAgents"
 
-SWIFTC_ARGS=(-module-cache-path "$MODULE_CACHE" "$SRC" -o "$BIN")
-if [[ -n "$SDK_PATH" ]]; then
-  SWIFTC_ARGS=(-sdk "$SDK_PATH" "${SWIFTC_ARGS[@]}")
-fi
-swiftc "${SWIFTC_ARGS[@]}"
+swift build -c release --package-path "$ROOT_DIR"
+cp "$ROOT_DIR/.build/release/macclip" "$BIN"
 
 cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -56,4 +45,4 @@ launchctl bootstrap "gui/$UID_VALUE" "$PLIST"
 launchctl kickstart -k "gui/$UID_VALUE/$LABEL"
 
 echo "MacClip installed and running."
-echo "Use Option+V to open clipboard history."
+echo "Option+V: clipboard history · Option+Shift+R: capture region"
