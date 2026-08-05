@@ -1,14 +1,15 @@
 {
   "name": "macclip",
-  "version": "0.1.2",
-  "description": "Tiny macOS clipboard history app with a global hotkey picker.",
+  "version": "0.2.0",
+  "description": "macOS menu-bar tool: clipboard history, screen capture, annotation editor, capture library.",
   "type": "module",
   "bin": {
     "macclip": "bin/macclip.js"
   },
   "files": [
     "bin/macclip.js",
-    "macclip.swift",
+    "Package.swift",
+    "Sources/",
     "README.md",
     "LICENSE"
   ],
@@ -23,14 +24,17 @@
     "pack:dry-run": "npm pack --dry-run",
     "verify": "npm run lint && npm run pack:dry-run",
     "prepublishOnly": "npm run verify",
-    "test": "npm run lint"
+    "test": "npm run lint && swift test"
   },
   "keywords": [
     "clipboard",
     "macos",
     "menu-bar",
     "hotkey",
-    "productivity"
+    "productivity",
+    "screenshot",
+    "screen-capture",
+    "annotation"
   ],
   "engines": {
     "node": ">=18"
