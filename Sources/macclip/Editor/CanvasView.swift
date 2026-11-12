@@ -352,6 +352,8 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             } else if selectedID != nil {
                 selectedID = nil
                 needsDisplay = true
+            } else if tool == .crop, document.cropRect != nil {
+                resetCrop()
             } else {
                 super.keyDown(with: event)
             }
@@ -404,6 +406,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         let snapshot = document
         editorUndoManager.registerUndo(withTarget: self) { canvas in
             canvas.registerUndoSnapshot() // makes redo work symmetrically
+            canvas.blurCache.removeAll() // cached pixels belong to pre-undo rects
             canvas.document = snapshot
             canvas.selectedID = nil
             canvas.onStatusChange?()

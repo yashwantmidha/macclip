@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ]
     private let historyLimitChoices: [Int] = [10, 20, 30, 40, 50]
     private let historyLimitDefaultsKey = "macclip.historyLimit"
+    private let hotkeyDefaultsKey = "macclip.historyHotkey"
     private let openEditorDefaultsKey = "macclip.openEditorAfterCapture"
     private let mirrorCapturesDefaultsKey = "macclip.saveCopiesToPictures"
 
@@ -32,7 +33,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var mirrorCapturesMenuItem: NSMenuItem?
     private var loginMenuItem: NSMenuItem?
     private var currentHotKeyCode: UInt32 = UInt32(kVK_ANSI_V)
-    private var lastFrontmostApp: NSRunningApplication?
     private var hasPromptedAccessibilityThisSession = false
 
     private var editors: [UUID: EditorWindowController] = [:]
@@ -101,7 +101,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         currentHistoryLimit = loadSavedHistoryLimit()
+        currentHotKeyCode = loadSavedHotkey()
         NSApp.setActivationPolicy(.accessory)
+        setupMainMenu()
         setupStatusItem()
         installHotkeys()
         store.startPolling()
@@ -110,6 +112,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         hotkeys.unregisterAll()
+    }
+
+    // MARK: - Main menu
+
+    /// Never visible (accessory app), but text fields only get ⌘Z/X/C/V/A
+    /// through main-menu key equivalents.
+    private func setupMainMenu() {
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        let editItem = NSMenuItem()
+        editItem.submenu = edit
+        let mainMenu = NSMenu()
+        mainMenu.addItem(editItem)
+        NSApp.mainMenu = mainMenu
     }
 
     // MARK: - Status menu
@@ -354,6 +375,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return historyLimitChoices.contains(saved) ? saved : 20
     }
 
+    private func loadSavedHotkey() -> UInt32 {
+        guard let saved = UserDefaults.standard.object(forKey: hotkeyDefaultsKey) as? Int,
+              let choice = hotkeyChoices.first(where: { Int($0.keyCode) == saved }) else {
+            return UInt32(kVK_ANSI_V)
+        }
+        return choice.keyCode
+    }
+
     private func hotkeyTitle(for code: UInt32) -> String {
         hotkeyChoices.first(where: { $0.keyCode == code })?.title ?? "Option + ?"
     }
@@ -364,6 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         currentHotKeyCode = chosenCode
+        UserDefaults.standard.set(Int(chosenCode), forKey: hotkeyDefaultsKey)
         registerCurrentHotkeys()
         refreshHotkeyMenuState()
     }
@@ -385,7 +415,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showHistory() {
-        lastFrontmostApp = NSWorkspace.shared.frontmostApplication
         store.removeCaptures(notIn: Set(library.records.map(\.id)))
         panelController.show(items: store.items, near: NSEvent.mouseLocation)
     }
@@ -443,7 +472,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func accessibilityGranted(prompt: Bool) -> Bool {
-        let opts = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: prompt] as CFDictionary
+        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: prompt] as CFDictionary
         return AXIsProcessTrustedWithOptions(opts)
     }
 

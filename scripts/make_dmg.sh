@@ -13,8 +13,10 @@ rm -rf "$DIST"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 echo "==> Building universal binary"
-swift build -c release --arch arm64 --arch x86_64 --package-path "$ROOT"
-cp "$ROOT/.build/apple/Products/Release/macclip" "$APP/Contents/MacOS/macclip"
+BUILD_ARGS=(-c release --arch arm64 --arch x86_64 --package-path "$ROOT")
+swift build "${BUILD_ARGS[@]}"
+# Ask SwiftPM where the product is: the universal output dir differs across toolchains.
+cp "$(swift build "${BUILD_ARGS[@]}" --show-bin-path)/macclip" "$APP/Contents/MacOS/macclip"
 
 echo "==> Assembling bundle"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"

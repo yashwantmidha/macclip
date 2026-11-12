@@ -59,7 +59,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
 
     private static let toolSymbols: [(EditorTool, String, String)] = [
         (.select, "cursorarrow", "Select"),
-        (.crop, "crop", "Crop (⏎ applies)"),
+        (.crop, "crop", "Crop (⏎ applies, esc resets)"),
         (.arrow, "arrow.up.right", "Arrow"),
         (.rect, "rectangle", "Rectangle"),
         (.ellipse, "circle", "Ellipse"),

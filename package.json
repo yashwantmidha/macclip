@@ -10,6 +10,7 @@
     "bin/macclip.js",
     "Package.swift",
     "Sources/",
+    "Tests/",
     "README.md",
     "LICENSE"
   ],

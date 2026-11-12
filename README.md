@@ -57,7 +57,7 @@ Requires Xcode Command Line Tools (`swift`).
 
 In the history picker:
 
-- `Enter` copy · `Cmd + Enter` (or double-click) paste · `Space` edit capture · `Cmd + P` pin · `Esc` close
+- `Enter` copy · `Cmd + Enter` (or click a row) paste · `Space` edit capture · `Cmd + P` pin · `Esc` close
 - Row buttons: `📋` copy, `📌`/`📍` pin/unpin, `🗑` delete
 
 Useful commands:

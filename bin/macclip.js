@@ -22,7 +22,9 @@ const binPath = path.join(installDir, APP_NAME);
 const sessionPlistPath = path.join(installDir, `${LABEL}.plist`);
 const launchAgentPlistPath = path.join(HOME, "Library", "LaunchAgents", `${LABEL}.plist`);
 const packagePath = path.join(projectRoot, "Package.swift");
-const builtBinaryPath = path.join(projectRoot, ".build", "release", "macclip");
+// Build outside the package dir: a global npm prefix may be root-owned.
+const scratchPath = path.join(installDir, ".build");
+const builtBinaryPath = path.join(scratchPath, "release", "macclip");
 
 function fail(message) {
   console.error(`Error: ${message}`);
@@ -82,7 +84,7 @@ function compileBinary() {
   ensureSource();
   ensureDirectories();
 
-  run("swift", ["build", "-c", "release", "--package-path", projectRoot], true);
+  run("swift", ["build", "-c", "release", "--package-path", projectRoot, "--scratch-path", scratchPath], true);
   copyFileSync(builtBinaryPath, binPath);
 }
 
