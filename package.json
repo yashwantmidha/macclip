@@ -1,7 +1,7 @@
 {
   "name": "macclip",
   "version": "0.2.1",
-  "description": "macOS menu-bar tool: clipboard history, screen capture, annotation editor, capture library.",
+  "description": "macOS menu-bar tool: clipboard history, screen capture, annotation editor, capture library, and a Windows-style Alt+Tab window switcher.",
   "type": "module",
   "bin": {
     "macclip": "bin/macclip.js"
@@ -35,7 +35,9 @@
     "productivity",
     "screenshot",
     "screen-capture",
-    "annotation"
+    "annotation",
+    "window-switcher",
+    "alt-tab"
   ],
   "engines": {
     "node": ">=18"

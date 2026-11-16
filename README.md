@@ -1,6 +1,6 @@
 # MacClip
 
-macOS menu-bar tool: clipboard history + screen capture + annotation editor + capture library.
+macOS menu-bar tool: clipboard history + screen capture + annotation editor + capture library + Windows-style `Alt + Tab` window switcher.
 
 ## Features
 
@@ -25,6 +25,8 @@ macOS menu-bar tool: clipboard history + screen capture + annotation editor + ca
 - Works like Windows `Alt + Tab`: one thumbnail per window (not per app), most recent first, minimized windows included
 - Hold `Option`, tap `Tab` / `Shift + Tab` or arrow keys to cycle, release `Option` or click a thumbnail to switch, `Esc` to cancel
 - Close a window without leaving the switcher: click its `×`, or press `W` / `Delete` on the selected one
+- More windows than fit on screen: the grid scrolls (trackpad / wheel), selection stays in view
+- Settings: on/off, `Option + Tab` or `Control + Tab`, small / medium / large thumbnails
 
 **Capture library** (`Option + Shift + L`)
 - Day-grouped thumbnail grid, blue dot = edited
@@ -65,6 +67,26 @@ In the history picker:
 
 - `Enter` copy · `Cmd + Enter` (or double-click a row) paste · `Space` edit capture · `Cmd + P` pin · `Esc` close
 - Row buttons: `📋` copy, `📌`/`📍` pin/unpin, `🗑` delete
+
+In the window switcher (while holding `⌥`):
+
+- `Tab` / `Shift + Tab` / arrow keys move · release `⌥` or click a thumbnail to switch · `W` / `Delete` or `×` close a window · `Esc` cancel
+
+## Settings
+
+Menu-bar icon → **Settings**:
+
+| Setting | Options | Default |
+|---|---|---|
+| History Hotkey | `Option + V` / `C` / `X` / `Space` | `Option + V` |
+| History Limit | 10 / 20 / 30 / 40 / 50 items | 20 |
+| Open Editor After Capture | on / off | on |
+| Save Copies to Pictures/MacClip | on / off | on |
+| Window Switcher → Enabled | on / off (off frees the hotkey for other apps) | on |
+| Window Switcher → hotkey | `Option + Tab` / `Control + Tab` | `Option + Tab` |
+| Window Switcher → thumbnails | Small / Medium / Large | Medium |
+
+All settings persist across restarts. `Cmd + Tab` cannot be replaced: macOS reserves it.
 
 Useful commands:
 

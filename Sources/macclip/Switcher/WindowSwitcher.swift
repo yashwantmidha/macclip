@@ -1,5 +1,24 @@
 import AppKit
 import ApplicationServices
+import Carbon.HIToolbox
+
+/// Modifier held while cycling. Cmd+Tab is reserved by macOS and cannot be taken over.
+enum SwitcherModifier: String, CaseIterable {
+    case option, control
+
+    var title: String { self == .option ? "Option + Tab" : "Control + Tab" }
+    var carbonFlags: UInt32 { UInt32(self == .option ? optionKey : controlKey) }
+    var eventFlag: CGEventFlags { self == .option ? .maskAlternate : .maskControl }
+}
+
+enum SwitcherThumbSize: Int, CaseIterable {
+    case small, medium, large
+
+    var title: String { ["Small", "Medium", "Large"][rawValue] }
+    var size: NSSize {
+        [NSSize(width: 160, height: 100), NSSize(width: 240, height: 150), NSSize(width: 320, height: 200)][rawValue]
+    }
+}
 
 // Private but long-stable (used by AltTab, yabai, Rectangle). Maps AX window -> CGWindowID.
 @_silgen_name("_AXUIElementGetWindow")
@@ -147,9 +166,11 @@ final class SwitcherGridView: NSView {
     static let windowPadding: CGFloat = 18
     static let edgeInsets: CGFloat = 12
     static let iconSize: CGFloat = 26
-    static let thumb = NSSize(width: 240, height: 150)
-    static let cell = NSSize(width: thumb.width + edgeInsets * 2,
-                             height: edgeInsets + iconSize + 5 + thumb.height + edgeInsets)
+    static var thumb = SwitcherThumbSize.medium.size
+    static var cell: NSSize {
+        NSSize(width: thumb.width + edgeInsets * 2,
+               height: edgeInsets + iconSize + 5 + thumb.height + edgeInsets)
+    }
 
     var windows: [SwitchableWindow] = []
     var thumbnails: [CGWindowID: NSImage] = [:]
@@ -271,6 +292,12 @@ final class WindowSwitcher {
     private var promptedAccessibility = false
     private var promptedScreenRecording = false
 
+    /// Releasing this modifier commits the selection; must match the registered hotkey.
+    var modifier = SwitcherModifier.option
+    var thumbSize = SwitcherThumbSize.medium {
+        didSet { SwitcherGridView.thumb = thumbSize.size }
+    }
+
     var isShowing: Bool { panel?.isVisible == true }
 
     func step(_ delta: Int) {
@@ -315,7 +342,8 @@ final class WindowSwitcher {
 
         releaseTimer?.invalidate()
         releaseTimer = Timer.scheduledTimer(withTimeInterval: 0.03, repeats: true) { [weak self] _ in
-            if !CGEventSource.flagsState(.combinedSessionState).contains(.maskAlternate) { self?.commit() }
+            guard let self else { return }
+            if !CGEventSource.flagsState(.combinedSessionState).contains(self.modifier.eventFlag) { self.commit() }
         }
         RunLoop.main.add(releaseTimer!, forMode: .common)
     }

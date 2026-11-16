@@ -14,6 +14,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyDefaultsKey = "macclip.historyHotkey"
     private let openEditorDefaultsKey = "macclip.openEditorAfterCapture"
     private let mirrorCapturesDefaultsKey = "macclip.saveCopiesToPictures"
+    private let switcherEnabledDefaultsKey = "macclip.switcherEnabled"
+    private let switcherModifierDefaultsKey = "macclip.switcherModifier"
+    private let switcherThumbDefaultsKey = "macclip.switcherThumbSize"
 
     static var picturesFolder: URL {
         FileManager.default
@@ -33,6 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var openEditorMenuItem: NSMenuItem?
     private var mirrorCapturesMenuItem: NSMenuItem?
     private var loginMenuItem: NSMenuItem?
+    private var switcherEnabledMenuItem: NSMenuItem?
+    private var switcherModifierMenuItems: [SwitcherModifier: NSMenuItem] = [:]
+    private var switcherThumbMenuItems: [SwitcherThumbSize: NSMenuItem] = [:]
     private var currentHotKeyCode: UInt32 = UInt32(kVK_ANSI_V)
     private var hasPromptedAccessibilityThisSession = false
     private var pasteTarget: NSRunningApplication?
@@ -46,6 +52,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         set {
             UserDefaults.standard.set(newValue, forKey: openEditorDefaultsKey)
+        }
+    }
+
+    private var switcherEnabled: Bool {
+        get {
+            UserDefaults.standard.object(forKey: switcherEnabledDefaultsKey) as? Bool ?? true
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: switcherEnabledDefaultsKey)
         }
     }
 
@@ -104,6 +119,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         currentHistoryLimit = loadSavedHistoryLimit()
         currentHotKeyCode = loadSavedHotkey()
+        loadSwitcherSettings()
         NSApp.setActivationPolicy(.accessory)
         setupMainMenu()
         setupStatusItem()
@@ -195,6 +211,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsMenu.addItem(mirrorItem)
         mirrorCapturesMenuItem = mirrorItem
 
+        let switcherParent = NSMenuItem(title: "Window Switcher", action: nil, keyEquivalent: "")
+        let switcherMenu = NSMenu(title: "Window Switcher")
+        let switcherEnabledItem = NSMenuItem(title: "Enabled", action: #selector(toggleSwitcher), keyEquivalent: "")
+        switcherEnabledItem.target = self
+        switcherMenu.addItem(switcherEnabledItem)
+        switcherEnabledMenuItem = switcherEnabledItem
+        switcherMenu.addItem(NSMenuItem.separator())
+        for modifier in SwitcherModifier.allCases {
+            let item = NSMenuItem(title: modifier.title, action: #selector(changeSwitcherModifier(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = modifier.rawValue
+            switcherMenu.addItem(item)
+            switcherModifierMenuItems[modifier] = item
+        }
+        switcherMenu.addItem(NSMenuItem.separator())
+        for size in SwitcherThumbSize.allCases {
+            let item = NSMenuItem(title: "\(size.title) Thumbnails", action: #selector(changeSwitcherThumbSize(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = size.rawValue
+            switcherMenu.addItem(item)
+            switcherThumbMenuItems[size] = item
+        }
+        switcherParent.submenu = switcherMenu
+        settingsMenu.addItem(switcherParent)
+
         if LoginItem.isAvailable {
             let loginItem = NSMenuItem(title: "Start at Login", action: #selector(toggleLoginItem), keyEquivalent: "")
             loginItem.target = self
@@ -215,6 +256,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         refreshOpenEditorMenuState()
         refreshMirrorCapturesMenuState()
         refreshLoginMenuState()
+        refreshSwitcherMenuState()
     }
 
     private func menuItem(_ title: String, _ action: Selector, symbol: String) -> NSMenuItem {
@@ -253,14 +295,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func registerCurrentHotkeys() {
         let optionShift = UInt32(optionKey | shiftKey)
-        hotkeys.register([
+        let tab = UInt32(kVK_Tab)
+        let switcherFlags = windowSwitcher.modifier.carbonFlags
+        let switcherBindings = switcherEnabled ? [
+            HotkeyBinding(id: HotkeyID.switchWindow, keyCode: tab, modifiers: switcherFlags),
+            HotkeyBinding(id: HotkeyID.switchWindowReverse, keyCode: tab, modifiers: switcherFlags | UInt32(shiftKey))
+        ] : []
+        hotkeys.register(switcherBindings + [
             HotkeyBinding(id: HotkeyID.history, keyCode: currentHotKeyCode, modifiers: UInt32(optionKey)),
             HotkeyBinding(id: HotkeyID.captureRegion, keyCode: UInt32(kVK_ANSI_R), modifiers: optionShift),
             HotkeyBinding(id: HotkeyID.captureWindow, keyCode: UInt32(kVK_ANSI_W), modifiers: optionShift),
             HotkeyBinding(id: HotkeyID.captureFullscreen, keyCode: UInt32(kVK_ANSI_F), modifiers: optionShift),
-            HotkeyBinding(id: HotkeyID.library, keyCode: UInt32(kVK_ANSI_L), modifiers: optionShift),
-            HotkeyBinding(id: HotkeyID.switchWindow, keyCode: UInt32(kVK_Tab), modifiers: UInt32(optionKey)),
-            HotkeyBinding(id: HotkeyID.switchWindowReverse, keyCode: UInt32(kVK_Tab), modifiers: optionShift)
+            HotkeyBinding(id: HotkeyID.library, keyCode: UInt32(kVK_ANSI_L), modifiers: optionShift)
         ])
     }
 
@@ -367,6 +413,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func toggleMirrorCaptures() {
         mirrorCapturesToPictures.toggle()
         refreshMirrorCapturesMenuState()
+    }
+
+    private func refreshSwitcherMenuState() {
+        switcherEnabledMenuItem?.state = switcherEnabled ? .on : .off
+        for (modifier, item) in switcherModifierMenuItems {
+            item.state = modifier == windowSwitcher.modifier ? .on : .off
+        }
+        for (size, item) in switcherThumbMenuItems {
+            item.state = size == windowSwitcher.thumbSize ? .on : .off
+        }
+    }
+
+    private func loadSwitcherSettings() {
+        let defaults = UserDefaults.standard
+        windowSwitcher.modifier = defaults.string(forKey: switcherModifierDefaultsKey)
+            .flatMap(SwitcherModifier.init(rawValue:)) ?? .option
+        windowSwitcher.thumbSize = (defaults.object(forKey: switcherThumbDefaultsKey) as? Int)
+            .flatMap(SwitcherThumbSize.init(rawValue:)) ?? .medium
+    }
+
+    @objc private func toggleSwitcher() {
+        switcherEnabled.toggle()
+        registerCurrentHotkeys()
+        refreshSwitcherMenuState()
+    }
+
+    @objc private func changeSwitcherModifier(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let modifier = SwitcherModifier(rawValue: raw) else {
+            return
+        }
+        windowSwitcher.modifier = modifier
+        UserDefaults.standard.set(raw, forKey: switcherModifierDefaultsKey)
+        registerCurrentHotkeys()
+        refreshSwitcherMenuState()
+    }
+
+    @objc private func changeSwitcherThumbSize(_ sender: NSMenuItem) {
+        guard let size = SwitcherThumbSize(rawValue: sender.tag) else {
+            return
+        }
+        windowSwitcher.thumbSize = size
+        UserDefaults.standard.set(size.rawValue, forKey: switcherThumbDefaultsKey)
+        refreshSwitcherMenuState()
     }
 
     @objc private func toggleLoginItem() {
