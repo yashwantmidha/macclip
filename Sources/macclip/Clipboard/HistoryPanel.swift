@@ -26,7 +26,6 @@ final class HistoryPanel: NSPanel {
 }
 
 final class ClickPasteTableView: NSTableView {
-    var onPrimaryRowClick: ((Int) -> Void)?
     var onEnterPressed: ((NSEvent) -> Void)?
     var onSpacePressed: (() -> Void)?
 
@@ -39,26 +38,6 @@ final class ClickPasteTableView: NSTableView {
         default:
             super.keyDown(with: event)
         }
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        super.mouseUp(with: event)
-
-        guard event.type == .leftMouseUp else {
-            return
-        }
-
-        let local = convert(event.locationInWindow, from: nil)
-        if let hit = hitTest(local), hit is NSButton {
-            return
-        }
-
-        let row = self.row(at: local)
-        guard row >= 0 else {
-            return
-        }
-
-        onPrimaryRowClick?(row)
     }
 }
 
@@ -109,9 +88,6 @@ final class ClipboardPanelController: NSObject, NSTableViewDataSource, NSTableVi
 
         configurePanel()
         buildUI()
-        tableView.onPrimaryRowClick = { [weak self] row in
-            self?.pasteRow(row)
-        }
         tableView.onEnterPressed = { [weak self] event in
             self?.handleEnter(event)
         }

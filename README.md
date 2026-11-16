@@ -21,6 +21,11 @@ macOS menu-bar tool: clipboard history + screen capture + annotation editor + ca
 - `⌘C` copy flattened · `⌘S` save PNG · drag the image out into any app
 - Edits persist — reopen any capture from the library and keep editing
 
+**Window switcher** (`Option + Tab`)
+- Works like Windows `Alt + Tab`: one thumbnail per window (not per app), most recent first, minimized windows included
+- Hold `Option`, tap `Tab` / `Shift + Tab` or arrow keys to cycle, release `Option` or click a thumbnail to switch, `Esc` to cancel
+- Close a window without leaving the switcher: click its `×`, or press `W` / `Delete` on the selected one
+
 **Capture library** (`Option + Shift + L`)
 - Day-grouped thumbnail grid, blue dot = edited
 - Double-click to edit; right-click: Edit / Copy Image / Save As… / Reveal in Finder / Delete
@@ -43,7 +48,7 @@ Requires Xcode Command Line Tools (`swift`).
 
 **Permissions** (both prompted on first use, both may reset after reinstall):
 - *Screen & System Audio Recording* — asked on first capture (macOS 15+). Apple's boilerplate mentions audio; MacClip captures still images only, no audio, no video.
-- *Accessibility* — needed only for auto-paste (`⌘⏎`). Plain copy works without it.
+- *Accessibility* — needed for auto-paste (`⌘⏎`) and for the window switcher to raise a specific window.
 
 ## Use
 
@@ -54,10 +59,11 @@ Requires Xcode Command Line Tools (`swift`).
 | `⌥⇧W` | Capture window |
 | `⌥⇧F` | Capture full screen |
 | `⌥⇧L` | Capture library |
+| `⌥Tab` / `⌥⇧Tab` | Window switcher (release ⌥ to focus) |
 
 In the history picker:
 
-- `Enter` copy · `Cmd + Enter` (or click a row) paste · `Space` edit capture · `Cmd + P` pin · `Esc` close
+- `Enter` copy · `Cmd + Enter` (or double-click a row) paste · `Space` edit capture · `Cmd + P` pin · `Esc` close
 - Row buttons: `📋` copy, `📌`/`📍` pin/unpin, `🗑` delete
 
 Useful commands:

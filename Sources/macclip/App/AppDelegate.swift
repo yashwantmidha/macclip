@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var store = ClipboardStore(maxItems: currentHistoryLimit)
     private let library = CaptureLibrary.shared
     private let captureService = CaptureService()
+    private let windowSwitcher = WindowSwitcher()
     private var statusItem: NSStatusItem!
     private let hotkeys = HotkeyManager()
     private var hotkeyMenuItems: [UInt32: NSMenuItem] = [:]
@@ -34,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var loginMenuItem: NSMenuItem?
     private var currentHotKeyCode: UInt32 = UInt32(kVK_ANSI_V)
     private var hasPromptedAccessibilityThisSession = false
+    private var pasteTarget: NSRunningApplication?
 
     private var editors: [UUID: EditorWindowController] = [:]
     private var libraryWindow: LibraryWindowController?
@@ -238,6 +240,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.captureFullscreen()
             case HotkeyID.library:
                 self.showLibrary()
+            case HotkeyID.switchWindow:
+                self.windowSwitcher.step(1)
+            case HotkeyID.switchWindowReverse:
+                self.windowSwitcher.step(-1)
             default:
                 break
             }
@@ -252,7 +258,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             HotkeyBinding(id: HotkeyID.captureRegion, keyCode: UInt32(kVK_ANSI_R), modifiers: optionShift),
             HotkeyBinding(id: HotkeyID.captureWindow, keyCode: UInt32(kVK_ANSI_W), modifiers: optionShift),
             HotkeyBinding(id: HotkeyID.captureFullscreen, keyCode: UInt32(kVK_ANSI_F), modifiers: optionShift),
-            HotkeyBinding(id: HotkeyID.library, keyCode: UInt32(kVK_ANSI_L), modifiers: optionShift)
+            HotkeyBinding(id: HotkeyID.library, keyCode: UInt32(kVK_ANSI_L), modifiers: optionShift),
+            HotkeyBinding(id: HotkeyID.switchWindow, keyCode: UInt32(kVK_Tab), modifiers: UInt32(optionKey)),
+            HotkeyBinding(id: HotkeyID.switchWindowReverse, keyCode: UInt32(kVK_Tab), modifiers: optionShift)
         ])
     }
 
@@ -416,6 +424,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showHistory() {
         store.removeCaptures(notIn: Set(library.records.map(\.id)))
+        let front = NSWorkspace.shared.frontmostApplication
+        pasteTarget = front == .current ? nil : front
         panelController.show(items: store.items, near: NSEvent.mouseLocation)
     }
 
@@ -436,7 +446,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func copyAndPaste(_ content: ClipContent) {
         copyContent(content)
 
+        // Hand focus back to the previous app either way, so an open editor
+        // window does not take over when the panel closes.
+        NSApp.hide(nil)
+        // hide() alone is slow and lets macOS pick the next app, which is not
+        // always the one the panel was opened over.
+        if let target = pasteTarget {
+            if #available(macOS 14.0, *) {
+                NSApp.yieldActivation(to: target)
+            }
+            target.activate()
+        }
+
         guard accessibilityGranted(prompt: false) else {
+            NSLog("MacClip: Accessibility not granted, copied without pasting")
             if !hasPromptedAccessibilityThisSession {
                 hasPromptedAccessibilityThisSession = true
                 _ = accessibilityGranted(prompt: true)
@@ -444,10 +467,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        NSApp.hide(nil)
+        pasteWhenTargetIsFront(attemptsLeft: 20)
+    }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
-            self.postCommandV()
+    /// Cmd+V posted while MacClip still holds keyboard focus is lost, so wait
+    /// (up to ~1s) until the target app is frontmost.
+    private func pasteWhenTargetIsFront(attemptsLeft: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            let front = NSWorkspace.shared.frontmostApplication
+            let ready = self.pasteTarget.map { $0 == front } ?? (front != .current)
+            if ready {
+                // Let the target's key window settle before the keystroke.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.postCommandV()
+                }
+            } else if attemptsLeft > 0 {
+                self.pasteWhenTargetIsFront(attemptsLeft: attemptsLeft - 1)
+            } else {
+                NSLog("MacClip: target app did not come to front, copied without pasting")
+            }
         }
     }
 

@@ -7,6 +7,8 @@ enum HotkeyID {
     static let captureWindow: UInt32 = 3
     static let captureFullscreen: UInt32 = 4
     static let library: UInt32 = 5
+    static let switchWindow: UInt32 = 6
+    static let switchWindowReverse: UInt32 = 7
 }
 
 struct HotkeyBinding {
